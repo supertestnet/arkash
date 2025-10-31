@@ -295,7 +295,7 @@
                     network: arkash.network,
                 });
                 text_for_recipient = arkash.textToHex( text_for_recipient );
-                text_for_recipient = arkash.hexToBech32( `hedgehog-${final_amount}sats-`, text_for_recipient );
+                text_for_recipient = arkash.hexToBech32( `arkash-${final_amount}sats-`, text_for_recipient );
                 document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
                     <p><strong>Payment seen</strong></p>
                     <p>Transaction ID: ${received.txid}</p>
@@ -353,8 +353,8 @@
                 var send_fee = await arkash.getLNSendFee( balance.available );
                 document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
                     <p><strong>Balance:</strong> ${balance.available - send_fee} satoshis</p>
-                    <p class="hidden"><button class="send_to_L1">Withdraw to L1</button></p>
                     <p><button class="send_to_LN">Withdraw to LN</button></p>
+                    <p><button class="send_to_L1">Withdraw to L1</button></p>
                 `;
 
                 $( '.send_to_L1' ).onclick = async () => {
