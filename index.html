@@ -295,7 +295,7 @@
                     network: arkash.network,
                 });
                 text_for_recipient = arkash.textToHex( text_for_recipient );
-                text_for_recipient = arkash.hexToBech32( `hh-${final_amount}sats-`, text_for_recipient );
+                text_for_recipient = arkash.hexToBech32( `hedgehog-${final_amount}sats-`, text_for_recipient );
                 document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
                     <p><strong>Payment seen</strong></p>
                     <p>Transaction ID: ${received.txid}</p>
