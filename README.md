@@ -4,7 +4,7 @@ Using Ark as a backend to recreate the experience of ecash, but self-custodial (
 # What is this?
 This is a step closer to a self-custodial ecash-like experience. I've been working on something similar for a while with my Hedgehog project, but a few nights ago I realized that Ark can do the same thing: store funds in such a way that a non-custodial third party can forward it to your recipient or "return to sender," but not take it (Ark servers and Hedgehog servers can both do this).
 
-Ensure that anyone who knows a certain secret can use it to withdraw that money with help from the third party (the Ark or Hedgehog server), and then share two piece of info with your recipient: the secret, and the server they need to talk to to get the money. Voila! This makes the payment asynchronous. The recipient doesn't need to be online when the sender creates the payment, and the sender doesn't need to be online when the recipient redeems it.
+The protocol can be summarized thusly: create a secret, and ensure that anyone who knows that secret can use it to withdraw money from a server via LN (with its cooperation) or on L1 (without its cooperation). Then share two piece of info with your recipient: the secret, and the server they need to talk to to get the money. Voila! This makes the payment asynchronous. The recipient doesn't need to be online when the sender creates the payment, and the sender doesn't need to be online when the recipient redeems it.
 
 # How can I try it?
 Just click here: https://supertestnet.github.io/arkash
