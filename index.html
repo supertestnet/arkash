@@ -298,7 +298,7 @@
                 text_for_recipient = arkash.hexToBech32( `arkash-${final_amount}sats-`, text_for_recipient );
                 document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
                     <p><strong>Payment seen</strong></p>
-                    <p>Transaction ID: ${received.txid}</p>
+                    <p>Ark txid (off-chain): ${received.txid}</p>
                     <p><strong>Text for recipient:</strong></p>
                     <p>${text_for_recipient}</p>
                     <p>Share that with your counterparty</p>
@@ -370,7 +370,7 @@
                     console.log( L1_txid );
                     document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
                         <p><strong>Success!</strong></p>
-                        <p>You redeemed the payment. Here is your txid: ${L1_txid}</p>
+                        <p>You redeemed the payment. Here is your txid (on L1): ${L1_txid}</p>
                     `;
                 }
 
@@ -390,8 +390,8 @@
                     });
                     document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
                         <p><strong>Success!</strong></p>
-                        <p>You redeemed the payment. Here is your txid: ${result.txid}</p>
-                        <p>And your preimage: ${result.preimage}</p>
+                        <p>You redeemed the payment. Here is your Ark txid (off-chain): ${result.txid}</p>
+                        <p>And your LN preimage: ${result.preimage}</p>
                     `;
                 }
 
