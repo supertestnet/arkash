@@ -9,6 +9,9 @@ Ensure that anyone who knows a certain secret can use it to withdraw that money 
 # How can I try it?
 Just click here: https://supertestnet.github.io/arkash
 
+# Video demo
+[![](https://supertestnet.github.io/arkash/arkash-screenshot.png)](https://supertestnet.github.io/arkash/arkash-demo.mp4)
+
 But be warned: it is only for testing, and you are likely to lose your money. Only put money in if you are willing to lose it for the sake of science.
 
 # Explainer
