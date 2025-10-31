@@ -237,6 +237,16 @@
                 showPage( 'loading_page' );
 
                 if ( !text_from_sender ) text_from_sender = prompt( `enter the data shared by the sender` );
+                if ( text_from_sender.startsWith( "http" ) || text_from_sender.startsWith( "file:" ) ) {
+                    var hash_arr = text_from_sender.substring( window.location.href.indexOf( "#" ) ).split( "#" );
+                    hash_arr.splice( 0, 1 );
+                    var $_HASH = {}
+                    hash_arr.forEach( item => {
+                      var vals = item.split( "=" );
+                      $_HASH[ vals[ 0 ] ] = vals[ 1 ];
+                    });
+                    text_from_sender = $_HASH[ "pmt" ];
+                }
                 text_from_sender = arkash.bech32ToHex( text_from_sender );
                 text_from_sender = arkash.hexToText( text_from_sender );
 
