@@ -162,7 +162,8 @@
         </script>
     </head>
     <body>
-        <div class="home_page">
+        <div class="loading_page">loading...</div>
+        <div class="home_page hidden">
             <h1>Arkash</h1>
             <p>Create payment instruments with *some* ecash-like properties, but use a non-custodial Ark server as the backend instead of a custodial ecash mint</p>
             <p><button class="create_payment">Create payment</button> <button class="redeem_payment">Redeem payment</button></p>
@@ -179,7 +180,6 @@
                 <p><button class="learn_more">Close</button></p>
             </div>
         </div>
-        <div class="loading_page hidden">loading...</div>
         <div class="create_payment_page hidden"></div>
         <div class="redeem_payment_page hidden"></div>
         <script>
@@ -232,6 +232,67 @@
                     swapProvider,
                 });
             }
+            var redeem = async text_from_sender => {
+                if ( !arkash.ready ) return alert( 'not ready yet, try again in a few seconds' );
+                showPage( 'loading_page' );
+
+                if ( !text_from_sender ) text_from_sender = prompt( `enter the data shared by the sender` );
+                text_from_sender = arkash.bech32ToHex( text_from_sender );
+                text_from_sender = arkash.hexToText( text_from_sender );
+
+                // Prepare the wallet
+                await prepWallet( text_from_sender );
+
+                // Display the balance                
+                var balance = await arkash.wallet.getBalance();
+                var send_fee = await arkash.getLNSendFee( balance.available );
+                document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                    <p><strong>Balance:</strong> ${balance.available - send_fee} satoshis</p>
+                    <p><button class="send_to_LN">Withdraw to LN</button></p>
+                    <p><button class="send_to_L1">Withdraw to L1</button></p>
+                `;
+
+                $( '.send_to_L1' ).onclick = async () => {
+                    var address = prompt( `enter an L1 address` );
+                    // if ( !arkash.isValidAddress( address ) || !address.startsWith( "tb1" ) ) return alert( `that address is invalid, please try again` );
+                    if ( !arkash.isValidAddress( address ) || !address.startsWith( "bc1" ) ) return alert( `that address is invalid, please try again` );
+                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                        <p><strong>Sending, please wait</strong></p>
+                        <p>This can take 30 seconds or more</p>
+                    `;
+                    var destino = address;
+                    var L1_txid = await new arkash.Ramps( arkash.wallet ).offboard( destino );
+                    console.log( L1_txid );
+                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                        <p><strong>Success!</strong></p>
+                        <p>You redeemed the payment. Here is your txid (on L1): ${L1_txid}</p>
+                    `;
+                }
+
+                $( '.send_to_LN' ).onclick = async () => {
+                    var bolt11 = prompt( `enter a bolt11 lightning invoice for ${balance.available - send_fee} sats` );
+                    if ( !arkash.isValidInvoice( bolt11 ) || arkash.getInvoiceAmount( bolt11 ) !== balance.available - send_fee ) {
+                        alert( `your invoice had a wrong amount, try again` );
+                        showPage( 'redeem_payment_page' );
+                        return;
+                    }
+                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                        <p><strong>Sending payment, please wait...</strong></p>
+                    `;
+                    // Pay the Lightning invoice from your Arkade wallet
+                    var result = await arkash.arkadeLightning.sendLightningPayment({
+                        invoice: bolt11,
+                    });
+                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                        <p><strong>Success!</strong></p>
+                        <p>You redeemed the payment. Here is your Ark txid (off-chain): ${result.txid}</p>
+                        <p>And your LN preimage: ${result.preimage}</p>
+                    `;
+                }
+
+                showPage( 'redeem_payment_page' );
+            }
+            $( '.redeem_payment' ).onclick = () => {redeem();}
             $( '.create_payment' ).onclick = async () => {
                 if ( !arkash.ready ) return alert( 'not ready yet, try again in a few seconds' );
                 showPage( 'loading_page' );
@@ -296,11 +357,12 @@
                 });
                 text_for_recipient = arkash.textToHex( text_for_recipient );
                 text_for_recipient = arkash.hexToBech32( `arkash-${final_amount}sats-`, text_for_recipient );
+                var url = window.location.protocol + "//" + window.location.hostname + window.location.pathname + `#pmt=${text_for_recipient}`;
                 document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
                     <p><strong>Payment seen</strong></p>
                     <p>Ark txid (off-chain): ${received.txid}</p>
                     <p><strong>Text for recipient:</strong></p>
-                    <p>${text_for_recipient}</p>
+                    <p>${url}</p>
                     <p>Share that with your counterparty</p>
                 `;
 
@@ -337,66 +399,6 @@
                 //         <p><strong>Text for recipient:</strong> ${text_for_recipient} – share this with your counterparty</p>`;
                 // }
             }
-            $( '.redeem_payment' ).onclick = async () => {
-                if ( !arkash.ready ) return alert( 'not ready yet, try again in a few seconds' );
-                showPage( 'loading_page' );
-
-                var text_from_sender = prompt( `enter the data shared by the sender` );
-                text_from_sender = arkash.bech32ToHex( text_from_sender );
-                text_from_sender = arkash.hexToText( text_from_sender );
-
-                // Prepare the wallet
-                await prepWallet( text_from_sender );
-
-                // Display the balance                
-                var balance = await arkash.wallet.getBalance();
-                var send_fee = await arkash.getLNSendFee( balance.available );
-                document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
-                    <p><strong>Balance:</strong> ${balance.available - send_fee} satoshis</p>
-                    <p><button class="send_to_LN">Withdraw to LN</button></p>
-                    <p><button class="send_to_L1">Withdraw to L1</button></p>
-                `;
-
-                $( '.send_to_L1' ).onclick = async () => {
-                    var address = prompt( `enter an L1 address` );
-                    // if ( !arkash.isValidAddress( address ) || !address.startsWith( "tb1" ) ) return alert( `that address is invalid, please try again` );
-                    if ( !arkash.isValidAddress( address ) || !address.startsWith( "bc1" ) ) return alert( `that address is invalid, please try again` );
-                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
-                        <p><strong>Sending, please wait</strong></p>
-                        <p>This can take 30 seconds or more</p>
-                    `;
-                    var destino = address;
-                    var L1_txid = await new arkash.Ramps( arkash.wallet ).offboard( destino );
-                    console.log( L1_txid );
-                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
-                        <p><strong>Success!</strong></p>
-                        <p>You redeemed the payment. Here is your txid (on L1): ${L1_txid}</p>
-                    `;
-                }
-
-                $( '.send_to_LN' ).onclick = async () => {
-                    var bolt11 = prompt( `enter a bolt11 lightning invoice for ${balance.available - send_fee} sats` );
-                    if ( !arkash.isValidInvoice( bolt11 ) || arkash.getInvoiceAmount( bolt11 ) !== balance.available - send_fee ) {
-                        alert( `your invoice had a wrong amount, try again` );
-                        showPage( 'redeem_payment_page' );
-                        return;
-                    }
-                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
-                        <p><strong>Sending payment, please wait...</strong></p>
-                    `;
-                    // Pay the Lightning invoice from your Arkade wallet
-                    var result = await arkash.arkadeLightning.sendLightningPayment({
-                        invoice: bolt11,
-                    });
-                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
-                        <p><strong>Success!</strong></p>
-                        <p>You redeemed the payment. Here is your Ark txid (off-chain): ${result.txid}</p>
-                        <p>And your LN preimage: ${result.preimage}</p>
-                    `;
-                }
-
-                showPage( 'redeem_payment_page' );
-            }
         </script>
         <script>
             (async()=>{
@@ -411,6 +413,8 @@
 
                 console.log( 'ready' );
                 arkash.ready = true;
+                if ( $_HASH[ "pmt" ] ) redeem( $_HASH[ "pmt" ] );
+                else showPage( 'home_page' );
 
                 // // Try to send an Ark payment
                 // var ark_txid = await arkash.wallet.sendBitcoin({
