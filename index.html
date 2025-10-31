@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no">
+        <title>Arkash</title>
+        <script src="https://unpkg.com/@cmdcode/tapscript@1.5.3"></script>
+        <script src="https://bundle.run/buffer@6.0.3"></script>
+        <script>var Buffer = buffer.Buffer;</script>
+        <script src="https://supertestnet.github.io/bolt11_browser/bolt11.js"></script>
+        <script>
+            var arkash = {
+                privkey: null,
+                network: null,
+                swap_provider: null,
+                esplora_url: null,
+                ark_server_url: null,
+                // esplora_url: "https://mutinynet.com/api", // Testnet
+                // ark_server_url: "https://mutinynet.arkade.sh", // Ark testnet server
+                ready: false,
+                identity: null,
+                wallet: null,
+                SingleKey: null,
+                Wallet: null,
+                waitForIncomingFunds: null,
+                Rams: null,
+                VtxoManager: null,
+                Unroll: null,
+                OnchainWallet: null,
+                VHTLC: null,
+                ArkadeLightning: null,
+                BoltzSwapProvider: null,
+                textToHex: text => {
+                    var encoded = new TextEncoder().encode( text );
+                    return Array.from( encoded )
+                        .map( x => x.toString( 16 ).padStart( 2, "0" ) )
+                        .join( "" );
+                },
+                hexToBytes: hex => Uint8Array.from( hex.match( /.{1,2}/g ).map( byte => parseInt( byte, 16 ) ) ),
+                waitSomeTime: num => new Promise( resolve => setTimeout( resolve, num ) ),
+                isValidAddress: address => {
+                    try {
+                        return !!tapscript.Address.decode( address ).script;
+                    } catch( e ) {return;}
+                    return;
+                },
+                isValidInvoice: invoice => {
+                    try {
+                        return typeof bolt11.decode( invoice ) === "object";
+                    } catch( e ) {
+                        return;
+                    }
+                },
+                getInvoiceAmount: invoice => {
+                    var decoded = bolt11.decode( invoice );
+                    var amount = Math.floor( decoded[ "millisatoshis" ] / 1000 ).toString();
+                    return Number( amount );
+                },
+                getLNSendFee: async amount_sats => {
+                    if ( !amount_sats ) return 0;
+                    var fees = await arkash.arkadeLightning.getFees();
+                    if ( !fees ) return alert( 'something went wrong' );
+                    var { percentage, minerFees } = fees.submarine;
+                    return Math.ceil( ( amount_sats * percentage ) / 100 + minerFees );
+                },
+                getLNReceiveFee: async amount_sats => {
+                    if ( !amount_sats ) return 0;
+                    var fees = await arkash.arkadeLightning.getFees();
+                    if ( !fees ) return alert( 'something went wrong' );
+                    var { percentage, minerFees } = fees.reverse;
+                    return Math.ceil( ( amount_sats * percentage ) / 100 + minerFees.claim + minerFees.lockup );
+                },
+            }
+        </script>
+        <script type="module">
+            // Import again in the script for usage (or use global if UMD)
+            import { SingleKey, Wallet, waitForIncomingFunds, Ramps, VtxoManager, Unroll, OnchainWallet, VHTLC } from 'https://cdn.jsdelivr.net/npm/@arkade-os/sdk/+esm';
+            import { bech32, hex, utf8 } from 'https://cdn.jsdelivr.net/npm/@scure/base/+esm';
+            import { ArkadeLightning, BoltzSwapProvider } from 'https://supertestnet.github.io/placeholder_1848583/boltz_swap.js';
+            arkash.SingleKey = SingleKey;
+            arkash.Wallet = Wallet;
+            arkash.waitForIncomingFunds = waitForIncomingFunds;
+            arkash.Ramps = Ramps;
+            arkash.VtxoManager = VtxoManager;
+            arkash.Unroll = Unroll;
+            arkash.OnchainWallet = OnchainWallet;
+            arkash.VHTLC = VHTLC;
+            arkash.ArkadeLightning = ArkadeLightning;
+            arkash.BoltzSwapProvider = BoltzSwapProvider;
+            arkash.arkadeLightning = null;
+        </script>
+        <style>
+            * {
+                box-sizing: border-box;
+                font-size: 1.15rem;
+                font-family: Arial, sans-serif;
+            }
+            html {
+                max-width: 800px;
+                padding: 3rem 1rem;
+                margin: auto;
+                line-height: 1.25;
+                padding: 0;
+            }
+            body {
+                margin: 3rem 1rem;
+                word-wrap: break-word;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            input {
+                line-height: 1.25;
+                width: 100%;
+                height: 1.8rem;
+                font-size: 1.15rem;
+                border: 1px solid grey;
+            }
+            .hidden {
+                display: none !important;
+            }
+            .explainer {
+                border: 1px solid black;
+                border-radius: 1rem;
+                padding: 1rem;
+            }
+            @media screen and (max-width: 600px) {
+            }
+        </style>
+        <script>
+            var $ = document.querySelector.bind( document );
+            var $$ = document.querySelectorAll.bind( document );
+            var url_params = new URLSearchParams( window.location.search );
+            var url_keys = url_params.keys();
+            var $_GET = {}
+            for ( var key of url_keys ) $_GET[ key ] = url_params.get( key );
+            var hash_arr = window.location.href.substring( window.location.href.indexOf( "#" ) ).split( "#" );
+            hash_arr.splice( 0, 1 );
+            var $_HASH = {}
+            hash_arr.forEach( item => {
+                var vals = item.split( "=" );
+                $_HASH[ vals[ 0 ] ] = vals[ 1 ];
+            });
+        </script>
+    </head>
+    <body>
+        <div class="home_page">
+            <h1>Arkash</h1>
+            <p>Create payment instruments with *some* ecash-like properties, but use a non-custodial Ark server as the backend instead of a custodial ecash mint</p>
+            <p><button class="create_payment">Create payment</button> <button class="redeem_payment">Redeem payment</button></p>
+            <p><button class="learn_more">Learn more</button></p>
+            <div class="explainer hidden">
+                <h2>Explainer</h2>
+                <p>In the world of bitcoin, there are two main "Chaumian Ecash" projects: fedimint and cashu. I really like the interface provided by these two services, namely this feature: to send somone money, you don't need to "get" anything from them, such as a bitcoin address or a lightning invoice. Instead, you *create* a payment instrument for them -- effectively, an IOU from an ecash mint -- and just hand it to them (or email it to them, or dm it to them, etc).</p>
+                <p>I like that interface because it reminds me of *physical* payment instruments. If I want to physically hand you $5, I don't need to get something from you; I just reach into my pocket and hand a bill to you. Same with a cheque or money order -- I just physically hand you the thing I want you to have (or mail it to you, or slip it under your door, etc).</p>
+                <p>I want digital money to work like that too, but in bitcoin (and lightning), the paradigm is that the recipient acts first, and creates a payment string for the sender, which the sender must receive, and then encode a payment to that payment string. This seems backward to me. In my opinion, the sender shouldn't have to *get* something from the recipient, the sender should just "give" something to the recipient. Chaumian ecash does better by letting the *sender* act first (as I want), but sadly, doing bitcoin-backed Chaumian ecash in a non-custodial way is currently an unsolved problem.</p>
+                <p>I think Ark moves a step in the right direction: Ark Service Providers are non-custodial and they provide "Send" and "Receive" functions that are similar to the ones provided by ecash mints. Sadly, they don't have the same privacy properties. But I think I can get pretty close by creating single-purpose Ark "accounts."</p>
+                <p>To that end, on this page, you can create a single-purpose Ark "account." By that term, I mean a cryptographic keypair, a bitcoin address that encodes Ark's onboarding script, and a websocket connection to an Ark Service Provider who understands this protocol. Then you can send money to this account (so it is held by your private key, and the server does not have custody), and then you can send the private key to your recipient. Sending the private key constitutes the payment, and he or she does not have to be online for you to do this!</p>
+                <p>When your recipient gets online, they can load the private key onto this page and "redeem" the payment -- i.e. withdraw the money from the "account" you deposited it *into.* And thus it works a lot like how Chaumian ecash works: the sender and the recipient do not have to be online simultaneously, but now the server does not have custody of user funds, and there is at least one privacy benefit that Chaumian ecash has too: as long as each account is only used twice, to fund it and to redeem it, the server has very little info to build up a profile about the users.</p>
+                <p>Except that I am not yet sure of a good way to stop the server from learning each user's ip address, so he or she *can* build up a profile with lots of sensitive info: your ip address, the amount of times that ip address has used his service, the amount of money deposited by that ip address each time, the times of day when it did so (and thus, probably, your time zone), and the ip addresses of the people who redeemed that money. That's a lot, but if you use tor or a vpn to guard your ip address, that can help, and anyway, I think it's a step in the right direction. Have fun!</p>
+                <p><button class="learn_more">Close</button></p>
+            </div>
+        </div>
+        <div class="loading_page hidden">loading...</div>
+        <div class="create_payment_page hidden"></div>
+        <div class="redeem_payment_page hidden"></div>
+        <script>
+            var showPage = page => {
+                $( '.home_page' ).classList.add( "hidden" );
+                $( '.loading_page' ).classList.add( "hidden" );
+                $( '.create_payment_page' ).classList.add( "hidden" );
+                $( '.redeem_payment_page' ).classList.add( "hidden" );
+                $( `.${page}` ).classList.remove( "hidden" );
+            }
+            $$( '.learn_more' ).forEach( item => item.onclick = () => {
+                if ( !$( '.explainer' ).classList.contains( "hidden" ) ) $( '.explainer' ).classList.add( "hidden" );
+                else $( '.explainer' ).classList.remove( "hidden" );
+            });
+            var prepWallet = async text_from_sender => {
+                // Generate a wallet
+                if ( text_from_sender ) {
+                    var { privkey, esplora_url, ark_server_url, swap_provider, network } = JSON.parse( text_from_sender );
+                    arkash.privkey = privkey;
+                    arkash.esplora_url = esplora_url;
+                    arkash.ark_server_url = ark_server_url;
+                    arkash.swap_provider = swap_provider;
+                    arkash.network = network;
+                } else {
+                    var privkey = crypto.getRandomValues( new Uint8Array( 32 ) ).toHex();
+                    arkash.privkey = privkey;
+                    var esplora_url = arkash.esplora_url; // Testnet
+                    var ark_server_url = arkash.ark_server_url; // Ark testnet server
+                }
+                arkash.identity = arkash.SingleKey.fromHex( privkey );
+                // const storage = new LocalStorageAdapter();  // Persist in browser
+
+                arkash.wallet = await arkash.Wallet.create({
+                    identity: arkash.identity,
+                    esploraUrl: esplora_url,
+                    arkServerUrl: ark_server_url,
+                    // storage,
+                });
+
+                // Initialize the Lightning swap provider
+                var swapProvider = new arkash.BoltzSwapProvider({
+                    // apiUrl: 'https://api.boltz.mutinynet.arkade.sh',
+                    apiUrl: arkash.swap_provider,
+                    network: arkash.network,
+                });
+
+                // Create the ArkadeLightning instance
+                arkash.arkadeLightning = new arkash.ArkadeLightning({
+                    wallet: arkash.wallet,
+                    swapProvider,
+                });
+            }
+            $( '.create_payment' ).onclick = async () => {
+                if ( !arkash.ready ) return alert( 'not ready yet, try again in a few seconds' );
+                showPage( 'loading_page' );
+
+                var amount = prompt( `Enter an amount of sats you want to pay someone (minimum 2000 sats)` );
+                if ( !amount ) return;
+                if ( String( amount ).includes( "." ) || String( amount ).includes( "," ) ) {
+                    alert( `Your amount was below the minimum or was not a valid number, try again -- and remember, no spaces, commas, or decimals` );
+                    showPage( 'home_page' );
+                    $( '.create_payment' ).click();
+                    return;
+                }
+                amount = Number( amount );
+                if ( amount < 2000 ) {
+                    alert( `Your amount was below the minimum or was not a valid number, try again -- and remember, no spaces, commas, or decimals` );
+                    showPage( 'home_page' );
+                    $( '.create_payment' ).click();
+                    return;
+                }
+
+                // Set parameters
+                arkash.network = 'mainnet';
+                arkash.esplora_url = "https://mempool.guide/api"; // Mainnet
+                arkash.ark_server_url = "https://arkade.computer"; // Ark mainnet server
+                arkash.swap_provider = "https://api.ark.boltz.exchange";
+
+                // Prepare the wallet
+                if ( !arkash.privkey ) await prepWallet();
+
+                var receive_fee = await arkash.getLNReceiveFee( amount );
+                var send_fee = await arkash.getLNSendFee( amount - receive_fee );
+                var sat_or_sats = receive_fee + send_fee === 1 ? "sat" : "sats";
+                var conf = true;
+                if ( receive_fee ) conf = confirm( `This payment will cost a total fee of ${receive_fee + send_fee} ${sat_or_sats}, so your recipient will only receive ${amount - receive_fee - send_fee} sats. Click ok if you are fine with that, otherwise click cancel and try again` );
+                if ( !conf ) {
+                    showPage( 'home_page' );
+                    return;
+                }
+
+                // Create an invoice for 10k sats
+                var result = await arkash.arkadeLightning.createLightningInvoice({
+                    amount: amount,
+                    description: 'Payment to my Arkade wallet',
+                });
+                document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
+                    <p><strong>Pay this bolt11:</strong></p>
+                    <p>${result.invoice}</p>
+                    <p>Waiting for payment to arrive...</p>
+                `;
+                console.log( result );
+
+                showPage( 'create_payment_page' );
+
+                // Monitor the payment, it will resolve when the payment is received
+                var received = await arkash.arkadeLightning.waitAndClaim( result.pendingSwap );
+                var text_for_recipient = JSON.stringify({
+                    privkey: arkash.identity.toHex(),
+                    esplora_url: arkash.esplora_url,
+                    ark_server_url: arkash.ark_server_url,
+                    swap_provider: arkash.swap_provider,
+                    network: arkash.network,
+                });
+                document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
+                    <p><strong>Payment seen</strong></p>
+                    <p>Transaction ID: ${received.txid}</p>
+                    <p><strong>Text for recipient:</strong></p>
+                    <p>${text_for_recipient}</p>
+                    <p>Share that with your counterparty</p>
+                `;
+
+                // // Generate receiving addresses
+                // var boarding_address = await arkash.wallet.getBoardingAddress();
+                // document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
+                //     <p><strong>Send to this address:</strong> ${boarding_address}</p>
+                //     <p>Waiting for payment to arrive...</p>
+                // `;
+
+                // Wait for funds to arrive
+                // Note that after initially setting up this listener and then receiving funds, I no longer think I need to do this in my main function, which would force me to send in funds every time I start the app before I can continue -- I should probably set up some sort of loop that does this in the background
+                // var incomingFunds = await arkash.waitForIncomingFunds( arkash.wallet );
+                // if ( incomingFunds.type === "vtxo" ) {
+                //     // Virtual coins received 
+                //     console.log( "VTXOs: ", incomingFunds.vtxos );
+                // } else if ( incomingFunds.type === "utxo" ) {
+                //     // Boarding coins received
+                //     console.log( "UTXOs: ", incomingFunds.coins );
+                //     document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
+                //         <p><strong>Payment detected</strong></p>
+                //         <p>Putting it on Ark, this may take 30 seconds or so...</p>
+                //     `;
+                //     console.log( 'onboarding...' );
+                //     var onboard_txid = await new arkash.Ramps( arkash.wallet ).onboard();
+                //     console.log( onboard_txid );
+                //     var text_for_recipient = JSON.stringify({
+                //         privkey: arkash.identity.toHex(),
+                //         esplora_url: arkash.esplora_url,
+                //         ark_server_url: arkash.ark_server_url,
+                //     });
+                //     document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
+                //         <p><strong>Onboarding complete</strong></p>
+                //         <p><strong>Text for recipient:</strong> ${text_for_recipient} – share this with your counterparty</p>`;
+                // }
+            }
+            $( '.redeem_payment' ).onclick = async () => {
+                if ( !arkash.ready ) return alert( 'not ready yet, try again in a few seconds' );
+                showPage( 'loading_page' );
+
+                var text_from_sender = prompt( `enter the data shared by the sender` );
+
+                // Prepare the wallet
+                await prepWallet( text_from_sender );
+
+                // Display the balance                
+                var balance = await arkash.wallet.getBalance();
+                var send_fee = await arkash.getLNSendFee( balance.available );
+                document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                    <p><strong>Balance:</strong> ${balance.available - send_fee} satoshis</p>
+                    <p class="hidden"><button class="send_to_L1">Withdraw to L1</button></p>
+                    <p><button class="send_to_LN">Withdraw to LN</button></p>
+                `;
+
+                $( '.send_to_L1' ).onclick = async () => {
+                    var address = prompt( `enter an L1 address` );
+                    // if ( !arkash.isValidAddress( address ) || !address.startsWith( "tb1" ) ) return alert( `that address is invalid, please try again` );
+                    if ( !arkash.isValidAddress( address ) || !address.startsWith( "bc1" ) ) return alert( `that address is invalid, please try again` );
+                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                        <p><strong>Sending, please wait</strong></p>
+                        <p>This can take 30 seconds or more</p>
+                    `;
+                    var destino = address;
+                    var L1_txid = await new arkash.Ramps( arkash.wallet ).offboard( destino );
+                    console.log( L1_txid );
+                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                        <p><strong>Success!</strong></p>
+                        <p>You redeemed the payment. Here is your txid: ${L1_txid}</p>
+                    `;
+                }
+
+                $( '.send_to_LN' ).onclick = async () => {
+                    var bolt11 = prompt( `enter a bolt11 lightning invoice for ${balance.available - send_fee} sats` );
+                    if ( !arkash.isValidInvoice( bolt11 ) || arkash.getInvoiceAmount( bolt11 ) !== balance.available - send_fee ) {
+                        alert( `your invoice had a wrong amount, try again` );
+                        showPage( 'redeem_payment_page' );
+                        return;
+                    }
+                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                        <p><strong>Sending payment, please wait...</strong></p>
+                    `;
+                    // Pay the Lightning invoice from your Arkade wallet
+                    var result = await arkash.arkadeLightning.sendLightningPayment({
+                        invoice: bolt11,
+                    });
+                    document.getElementsByClassName( 'redeem_payment_page' )[ 0 ].innerHTML = `
+                        <p><strong>Success!</strong></p>
+                        <p>You redeemed the payment. Here is your txid: ${result.txid}</p>
+                        <p>And your preimage: ${result.preimage}</p>
+                    `;
+                }
+
+                showPage( 'redeem_payment_page' );
+            }
+        </script>
+        <script>
+            (async()=>{
+                console.log( 'not ready...' );
+                // Wait for the module to load
+                var loop = async () => {
+                    if ( arkash.BoltzSwapProvider ) return;
+                    await arkash.waitSomeTime( 10 );
+                    return loop();
+                }
+                await loop();
+
+                console.log( 'ready' );
+                arkash.ready = true;
+
+                // // Try to send an Ark payment
+                // var ark_txid = await arkash.wallet.sendBitcoin({
+                //   address: 'ark1...',
+                //   amount: 10000,  // in satoshis
+                //   feeRate: 1      // optional, in sats/vbyte
+                // });
+                // console.log( ark_txid );
+            })();
+        </script>
+    </body>
+</html>
