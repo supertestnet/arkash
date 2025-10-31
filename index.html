@@ -274,7 +274,7 @@
                 // Create an invoice for 10k sats
                 var result = await arkash.arkadeLightning.createLightningInvoice({
                     amount: amount,
-                    description: 'Payment to my Arkade wallet',
+                    description: '',
                 });
                 document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
                     <p><strong>Pay this bolt11:</strong></p>
