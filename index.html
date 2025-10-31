@@ -264,11 +264,11 @@
                 var receive_fee = await arkash.getLNReceiveFee( amount );
                 var send_fee = await arkash.getLNSendFee( amount - receive_fee );
                 var sat_or_sats = receive_fee + send_fee === 1 ? "sat" : "sats";
-                var conf = true;
-                if ( receive_fee ) conf = confirm( `This payment will cost a total fee of ${receive_fee + send_fee} ${sat_or_sats}, so your recipient will only receive ${amount - receive_fee - send_fee} sats. Click ok if you are fine with that, otherwise click cancel and try again` );
-                if ( !conf ) {
-                    showPage( 'home_page' );
-                    return;
+                var final_amount = amount - receive_fee - send_fee;
+                var make_bigger = confirm( `This payment will cost a total fee of ${receive_fee + send_fee} ${sat_or_sats}. Click ok if you want to pay ${amount + receive_fee + send_fee} sats so that your recipient will receive ${amount} sats, otherwise click cancel if you want to pay ${amount} sats so that your recipient receives ${final_amount} sats.` );
+                if ( make_bigger ) {
+                    amount = amount + receive_fee + send_fee;
+                    final_amount = amount - receive_fee - send_fee;
                 }
 
                 // Create an invoice for 10k sats
@@ -294,11 +294,8 @@
                     swap_provider: arkash.swap_provider,
                     network: arkash.network,
                 });
-                console.log( text_for_recipient );
                 text_for_recipient = arkash.textToHex( text_for_recipient );
-                console.log( text_for_recipient );
-                text_for_recipient = arkash.hexToBech32( "hedgehog", text_for_recipient );
-                console.log( text_for_recipient );
+                text_for_recipient = arkash.hexToBech32( `hh-${final_amount}sats-`, text_for_recipient );
                 document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
                     <p><strong>Payment seen</strong></p>
                     <p>Transaction ID: ${received.txid}</p>
