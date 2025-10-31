@@ -8,6 +8,7 @@
         <script src="https://bundle.run/buffer@6.0.3"></script>
         <script>var Buffer = buffer.Buffer;</script>
         <script src="https://supertestnet.github.io/bolt11_browser/bolt11.js"></script>
+        <script src="https://bundle.run/bech32@2.0.0"></script>
         <script>
             var arkash = {
                 privkey: null,
@@ -36,7 +37,21 @@
                         .map( x => x.toString( 16 ).padStart( 2, "0" ) )
                         .join( "" );
                 },
+                hexToText: hex => {
+                    var bytes = new Uint8Array( Math.ceil( hex.length / 2 ) );
+                    var i; for ( i=0; i<hex.length; i++ ) bytes[ i ] = parseInt( hex.substr( i * 2, 2 ), 16 );
+                    var text = new TextDecoder().decode( bytes );
+                    return text;
+                },
                 hexToBytes: hex => Uint8Array.from( hex.match( /.{1,2}/g ).map( byte => parseInt( byte, 16 ) ) ),
+                hexToBech32: ( prefix, hex ) => {
+                    var words = bech32.bech32m.toWords( arkash.hexToBytes( hex ) );
+                    return bech32.bech32m.encode( prefix, words, 100_000 );
+                },
+                bech32ToHex: bech32string => {
+                    var decoded = bech32.bech32m.fromWords( bech32.bech32m.decode( bech32string, 100_000 ).words );
+                    return new Uint8Array( decoded ).toHex();
+                },
                 waitSomeTime: num => new Promise( resolve => setTimeout( resolve, num ) ),
                 isValidAddress: address => {
                     try {
@@ -150,7 +165,6 @@
         <div class="home_page">
             <h1>Arkash</h1>
             <p>Create payment instruments with *some* ecash-like properties, but use a non-custodial Ark server as the backend instead of a custodial ecash mint</p>
-            <p>Note: I built this in like two days, and it is definitely not safe. You will probably lose any money you put into this app. Only use it if you are willing to lose it for the pursuit of scientific knowledge and the enrichment of someone-who-isn't-you.</p>
             <p><button class="create_payment">Create payment</button> <button class="redeem_payment">Redeem payment</button></p>
             <p><button class="learn_more">Learn more</button></p>
             <div class="explainer hidden">
@@ -280,6 +294,11 @@
                     swap_provider: arkash.swap_provider,
                     network: arkash.network,
                 });
+                console.log( text_for_recipient );
+                text_for_recipient = arkash.textToHex( text_for_recipient );
+                console.log( text_for_recipient );
+                text_for_recipient = arkash.hexToBech32( "hedgehog", text_for_recipient );
+                console.log( text_for_recipient );
                 document.getElementsByClassName( 'create_payment_page' )[ 0 ].innerHTML = `
                     <p><strong>Payment seen</strong></p>
                     <p>Transaction ID: ${received.txid}</p>
@@ -326,6 +345,8 @@
                 showPage( 'loading_page' );
 
                 var text_from_sender = prompt( `enter the data shared by the sender` );
+                text_from_sender = arkash.bech32ToHex( text_from_sender );
+                text_from_sender = arkash.hexToText( text_from_sender );
 
                 // Prepare the wallet
                 await prepWallet( text_from_sender );
