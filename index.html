@@ -85,6 +85,29 @@
                     var { percentage, minerFees } = fees.reverse;
                     return Math.ceil( ( amount_sats * percentage ) / 100 + minerFees.claim + minerFees.lockup );
                 },
+                convertHMS: value => {
+                    if ( value < 0 ) value = 0;
+                    var sec = parseInt(value, 10); // convert value to number if it's string
+                    var years = Math.floor(sec / 31536000); // get years
+                    var months = Math.floor((sec - (years * 31536000)) / 2592000); // get months
+                    var days = Math.floor((sec - (years * 31536000) - (months * 2592000)) / 86400); // get days
+                    var hours = Math.floor((sec - (years * 31536000) - (months * 2592000) - (days * 86400)) / 3600); // get hours
+                    var minutes = Math.floor((sec - (years * 31536000) - (months * 2592000) - (days * 86400) - (hours * 3600)) / 60); // get minutes
+                    var seconds = sec - (years * 31536000) - (months * 2592000) - (days * 86400) - (hours * 3600) - (minutes * 60); //  get seconds
+                    var yearsstring = (years != 1) ? `years`:`year`;
+                    var monthsstring = (months != 1) ?  `months`:`month`;
+                    var daysstring = (days != 1) ? `days`:`day`;
+                    var hoursstring = (hours != 1) ? `hours`:`hour`;
+                    var minutesstring = (minutes != 1) ? `minutes`:`minute`;
+                    var secondsstring = (seconds != 1) ? `seconds`:`second`;
+                    if ( years > 0 ) return `${years} ${yearsstring}`;
+                    if ( months > 0 ) return `${months} ${monthsstring}`;
+                    if ( days > 0 ) return `${days} ${daysstring}`;
+                    if ( hours > 0 ) return `${hours} ${hoursstring}`;
+                    if ( minutes > 0 ) return `${minutes} ${minutesstring}`;
+                    if ( seconds == 0 ) return `${seconds} seconds`;
+                    return `${seconds} ${secondsstring}`;
+                },
             }
         </script>
         <script type="module">
@@ -260,6 +283,8 @@
                 var vtxos = await arkash.wallet.walletRepository.getVtxos( addr );
                 var expiry = vtxos[ 0 ].virtualStatus.batchExpiry;
                 var status = vtxos[ 0 ].virtualStatus.state;
+                var time_left = Math.floor( ( expiry - Date.now() ) / 1000 );
+                time_left = arkash.convertHMS( time_left );
                 if ( status === "preconfirmed" ) var text_status = "not self-custodial";
 
                 // Display the balance                
@@ -268,14 +293,14 @@
                     <p><strong>Balance:</strong> ${balance.available - send_fee} satoshis</p>
                     <p><strong>Status:</strong> ${text_status} <button class="status_details_btn">Details</button></p>
                     <div class="status_details hidden"></div>
-                    <p><strong>Expires:</strong> ${Math.floor( ( expiry - Date.now() ) / 1000 )} seconds <button class="expiry_details_btn">Details</button></p>
+                    <p><strong>Expiry:</strong> ${time_left} <button class="expiry_details_btn">Details</button></p>
                     <div class="expiry_details hidden"></div>
                     <p><button class="send_to_LN">Withdraw to LN</button></p>
                     <p><button class="send_to_L1">Withdraw to L1</button></p>
                 `;
                 $$( '.expiry_details_btn' ).forEach( btn => btn.onclick = () => {
                     $$( '.expiry_details' ).forEach( ( item, index ) => {
-                        item.innerHTML = `<p>On Ark, utxos have an expiration date, and after they expire, they become custodial -- the Ark server owns them. You are recommended to either withdraw or renew your coins before they expire. But note that this app does not support renewing your coins yet. </p>`;
+                        item.innerHTML = `<p>On Ark, utxos have an expiration date, and after they expire, they become custodial -- the Ark server owns them. You are recommended to either withdraw or renew your coins before they expire. But note that this app does not support renewing your coins yet, but in apps that *do* support it, renewing your coins increases the amount of time you have til they expire.</p>`;
                         if ( !$$( '.expiry_details' )[ index ].classList.contains( "hidden" ) ) $$( '.expiry_details' )[ index ].classList.add( "hidden" );
                         else $$( '.expiry_details' )[ index ].classList.remove( "hidden" );
                     });
@@ -394,6 +419,8 @@
                 var vtxos = await arkash.wallet.walletRepository.getVtxos( addr );
                 var expiry = vtxos[ 0 ].virtualStatus.batchExpiry;
                 var status = vtxos[ 0 ].virtualStatus.state;
+                var time_left = Math.floor( ( expiry - Date.now() ) / 1000 );
+                time_left = arkash.convertHMS( time_left );
                 if ( status === "preconfirmed" ) var text_status = "not self-custodial";
 
                 // Share status with user
@@ -412,15 +439,17 @@
                     <p><strong>Ark txid (off-chain):</strong> ${received.txid}</p>
                     <p><strong>Status:</strong> ${text_status} <button class="status_details_btn">Details</button></p>
                     <div class="status_details hidden"></div>
-                    <p><strong>Expires:</strong> ${Math.floor( ( expiry - Date.now() ) / 1000 )} seconds <button class="expiry_details_btn">Details</button></p>
+                    <p><strong>Expiry:</strong> ${time_left} <button class="expiry_details_btn">Details</button></p>
                     <div class="expiry_details hidden"></div>
                     <p><strong>Text for recipient:</strong></p>
+                    <hr>
                     <p>${url}</p>
+                    <hr>
                     <p>Share that with your counterparty</p>
                 `;
                 $$( '.expiry_details_btn' ).forEach( btn => btn.onclick = () => {
                     $$( '.expiry_details' ).forEach( ( item, index ) => {
-                        item.innerHTML = `<p>On Ark, utxos have an expiration date, and after they expire, they become custodial -- the Ark server owns them. You are recommended to either withdraw or renew your coins before they expire. But note that this app does not support renewing your coins yet. </p>`;
+                        item.innerHTML = `<p>On Ark, utxos have an expiration date, and after they expire, they become custodial -- the Ark server owns them. You are recommended to either withdraw or renew your coins before they expire. But note that this app does not support renewing your coins yet, but in apps that *do* support it, renewing your coins increases the amount of time you have til they expire.</p>`;
                         if ( !$$( '.expiry_details' )[ index ].classList.contains( "hidden" ) ) $$( '.expiry_details' )[ index ].classList.add( "hidden" );
                         else $$( '.expiry_details' )[ index ].classList.remove( "hidden" );
                     });
