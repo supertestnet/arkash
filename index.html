@@ -275,7 +275,7 @@
                 `;
                 $$( '.expiry_details_btn' ).forEach( btn => btn.onclick = () => {
                     $$( '.expiry_details' ).forEach( ( item, index ) => {
-                        item.innerHTML = `<p>On Ark, utxos have an expiration date, and after they expire, they become custodial -- the Ark server owns them. You are recommended to either withdraw or renew your coins before they expire. But note that this app does not support renewing your coins yet. </p>`;
+                        item.innerHTML = `<p>On Ark, utxos have an expiration date, and after they expire, they become custodial -- the Ark server owns them. You can renew them before they expire, but this app does not support that yet. You are recommended to either withdraw or renew your coins before they expire.</p>`;
                         if ( !$$( '.expiry_details' )[ index ].classList.contains( "hidden" ) ) $$( '.expiry_details' )[ index ].classList.add( "hidden" );
                         else $$( '.expiry_details' )[ index ].classList.remove( "hidden" );
                     });
@@ -428,7 +428,7 @@
                 if ( status === "preconfirmed" ) {
                     $$( '.status_details_btn' ).forEach( btn => btn.onclick = () => {
                         $$( '.status_details' ).forEach( ( item, index ) => {
-                            item.innerHTML = `<p>Your coins' official status according to the server is "preconfirmed". As the name implies, a preconfirmed payment is not confirmed yet. It is also called an out-of-round payment, and it means that someone sent you money in such a way that the server can permit the sender to take it back in an act called Doublespending. In Ark, the server must be trusted not to do this, unless you 'renew' the money, which this app does not support yet.</p>`;
+                            item.innerHTML = `<p>Your coins' official status according to the server is "preconfirmed". As the name implies, a preconfirmed payment is not confirmed yet. It is also called an out-of-round payment, and it means that someone sent you money in such a way that the server can reverse the payment, and return it to the sender.</p><p>In the Arkade implementation (which this app uses), at the current time, the server must simply be trusted not to do this whenever money is received via lightning. I asked the developers to allow such payments to occur via the in-round method, which fixes this, but they said it's too much of a hassle for everyone involved.</p><p>In-round payments take longer and cost more money, which I figure is probably why they don't want to support them when you receive via LN, but I would prefer if they made it an option anyway. I recommend nagging them to support it, or nag me to use a different Ark implementation.</p>`;
                             if ( !$$( '.status_details' )[ index ].classList.contains( "hidden" ) ) $$( '.status_details' )[ index ].classList.add( "hidden" );
                             else $$( '.status_details' )[ index ].classList.remove( "hidden" );
                         });
