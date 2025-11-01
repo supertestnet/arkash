@@ -279,14 +279,19 @@
                 await prepWallet( text_from_sender );
 
                 // Get status and expiry
+                var text_status = "unknown";
+                var status = "none";
+                var time_left = 0;
                 var balance = await arkash.wallet.getBalance();
                 var addr = await arkash.wallet.getAddress();
                 var vtxos = await arkash.wallet.walletRepository.getVtxos( addr );
-                var expiry = vtxos[ 0 ].virtualStatus.batchExpiry;
-                var status = vtxos[ 0 ].virtualStatus.state;
-                var time_left = Math.floor( ( expiry - Date.now() ) / 1000 );
-                time_left = arkash.convertHMS( time_left );
-                if ( status === "preconfirmed" ) var text_status = "not self-custodial";
+                if ( vtxos.length ) {
+                    var expiry = vtxos[ 0 ].virtualStatus.batchExpiry;
+                    status = vtxos[ 0 ].virtualStatus.state;
+                    time_left = Math.floor( ( expiry - Date.now() ) / 1000 );
+                    time_left = arkash.convertHMS( time_left );
+                    if ( status === "preconfirmed" ) var text_status = "not self-custodial";
+                }
 
                 // Display the balance                
                 var send_fee = await arkash.getLNSendFee( balance.available );
@@ -415,14 +420,18 @@
 
                 // Get status and expiry
                 var text_status = "unknown";
+                var status = "none";
+                var time_left = 0;
                 var balance = await arkash.wallet.getBalance();
                 var addr = await arkash.wallet.getAddress();
                 var vtxos = await arkash.wallet.walletRepository.getVtxos( addr );
-                var expiry = vtxos[ 0 ].virtualStatus.batchExpiry;
-                var status = vtxos[ 0 ].virtualStatus.state;
-                var time_left = Math.floor( ( expiry - Date.now() ) / 1000 );
-                time_left = arkash.convertHMS( time_left );
-                if ( status === "preconfirmed" ) var text_status = "not self-custodial";
+                if ( vtxos.length ) {
+                    var expiry = vtxos[ 0 ].virtualStatus.batchExpiry;
+                    status = vtxos[ 0 ].virtualStatus.state;
+                    time_left = Math.floor( ( expiry - Date.now() ) / 1000 );
+                    time_left = arkash.convertHMS( time_left );
+                    if ( status === "preconfirmed" ) var text_status = "not self-custodial";
+                }
 
                 // Share status with user
                 var text_for_recipient = JSON.stringify({
