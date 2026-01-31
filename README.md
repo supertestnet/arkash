@@ -16,7 +16,7 @@ But be warned: it is only for testing, and you are likely to lose your money. On
 
 # Explainer
 
-In the world of bitcoin, there are two main "Chaumian Ecash" projects: fedimint and cashu. I really like the interface provided by these two services, namely this feature: to send somone money, you don't need to "get" anything from them, such as a bitcoin address or a lightning invoice. Instead, you *create* a payment instrument for them -- effectively, an IOU from an ecash mint -- and just hand it to them (or email it to them, or dm it to them, etc).
+In the world of bitcoin, there are two main "Chaumian Ecash" projects: fedimint and cashu. I really like the interface provided by these two services, namely this feature: to send somone money, you don't need to "get" anything from your recipient, such as a bitcoin address or a lightning invoice. Instead, you *create* a payment instrument for them -- effectively, an IOU from an ecash mint -- and just hand it to them (or email it to them, or dm it to them, etc).
 
 I like that interface because it reminds me of *physical* payment instruments. If I want to physically hand you $5, I don't need to get something from you; I just reach into my pocket and hand a bill to you. Same with a cheque or money order -- I just physically hand you the thing I want you to have (or mail it to you, or slip it under your door, etc).
 
